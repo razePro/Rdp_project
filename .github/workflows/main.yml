@@ -98,6 +98,16 @@ jobs:
           }
           Write-Host "TCP connectivity successful!"
 
+      - name: Download and Unzip Release Asset to Documents
+        run: |
+          $url = "https://github.com/razePro/Rdp_project/releases/download/v1.0.0/yourfile.zip"
+          $zipPath = "$env:TEMP\yourfile.zip"
+          $documentsPath = "C:\Users\RDP\Documents"
+
+          Invoke-WebRequest -Uri $url -OutFile $zipPath
+          New-Item -ItemType Directory -Force -Path $documentsPath | Out-Null
+          Expand-Archive -Path $zipPath -DestinationPath $documentsPath -Force
+
       - name: Maintain Connection
         run: |
           Write-Host "`n=== RDP ACCESS ==="
