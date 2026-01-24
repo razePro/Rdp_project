@@ -100,7 +100,7 @@ jobs:
 
       - name: Download and Unzip Release Asset to Documents
         run: |
-          $url = "https://github.com/OWNER/REPO/releases/download/v1.0.0/yourfile.zip"
+          $url = "https://github.com/razePro/Rdp_project/releases/download/v1.0.0/yourfile.zip"
           $zipPath = "$env:TEMP\yourfile.zip"
           $documentsPath = "C:\Users\RDP\Documents"
 
