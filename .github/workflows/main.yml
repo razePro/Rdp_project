@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Configure Core RDP Settings
         run: |
-          # Enable Remote Desktop and disable Network Level Authentication (if needed)
+          # Enable Remote Desktop and disable Network Level Authentication
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' `
                              -Name "fDenyTSConnections" -Value 0 -Force
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' `
@@ -19,50 +19,34 @@ jobs:
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' `
                              -Name "SecurityLayer" -Value 0 -Force
 
-          # Remove any existing rule with the same name to avoid duplication
           netsh advfirewall firewall delete rule name="RDP-Tailscale"
-          
-          # For testing, allow any incoming connection on port 3389
-          netsh advfirewall firewall add rule name="RDP-Tailscale" `
-            dir=in action=allow protocol=TCP localport=3389
-
-          # (Optional) Restart the Remote Desktop service to ensure changes take effect
+          netsh advfirewall firewall add rule name="RDP-Tailscale" dir=in action=allow protocol=TCP localport=3389
           Restart-Service -Name TermService -Force
 
       - name: Create RDP User with Fixed Password
         run: |
           $password = "Wellshop123!"
           $securePass = ConvertTo-SecureString $password -AsPlainText -Force
-
           New-LocalUser -Name "RDP" -Password $securePass -AccountNeverExpires
           Add-LocalGroupMember -Group "Administrators" -Member "RDP"
           Add-LocalGroupMember -Group "Remote Desktop Users" -Member "RDP"
-          
-          echo "RDP_CREDS=User: RDP | Password: $password" >> $env:GITHUB_ENV
-          
-          if (-not (Get-LocalUser -Name "RDP")) {
-              Write-Error "User creation failed"
-              exit 1
-          }
+          echo "RDP_CREDS=RDP|$password" >> $env:GITHUB_ENV
 
       - name: Install Tailscale
         run: |
           $tsUrl = "https://pkgs.tailscale.com/stable/tailscale-setup-1.82.0-amd64.msi"
           $installerPath = "$env:TEMP\tailscale.msi"
-          
           Invoke-WebRequest -Uri $tsUrl -OutFile $installerPath
           Start-Process msiexec.exe -ArgumentList "/i", "`"$installerPath`"", "/quiet", "/norestart" -Wait
           Remove-Item $installerPath -Force
 
       - name: Establish Tailscale Connection
         run: |
-          # Bring up Tailscale with the provided auth key and set a unique hostname
           & "$env:ProgramFiles\Tailscale\tailscale.exe" up `
               --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} `
               --hostname=github-rdp `
               --accept-dns=true
           
-          # Wait for Tailscale to assign an IP
           $tsIP = $null
           $retries = 0
           while (-not $tsIP -and $retries -lt 10) {
@@ -70,45 +54,65 @@ jobs:
               Start-Sleep -Seconds 5
               $retries++
           }
-          
-          if (-not $tsIP) {
-              Write-Error "Tailscale IP not assigned. Exiting."
-              exit 1
-          }
+          if (-not $tsIP) { Write-Error "Tailscale IP not assigned"; exit 1 }
           echo "TAILSCALE_IP=$tsIP" >> $env:GITHUB_ENV
-      
+
       - name: Verify RDP Accessibility
         run: |
-          Write-Host "Tailscale IP: $env:TAILSCALE_IP"
-          
-          # Test connectivity using Test-NetConnection against the Tailscale IP on port 3389
           $testResult = Test-NetConnection -ComputerName $env:TAILSCALE_IP -Port 3389
-          if (-not $testResult.TcpTestSucceeded) {
-              Write-Error "TCP connection to RDP port 3389 failed"
-              exit 1
-          }
-          Write-Host "TCP connectivity successful!"
+          if (-not $testResult.TcpTestSucceeded) { Write-Error "TCP 3389 failed"; exit 1 }
 
-      - name: Download and Unzip Release Asset to Documents
+      - name: Download and Unzip Release Asset
         run: |
           $url = "https://github.com/razePro/Rdp_project/releases/download/v1.0.0/yourfile.zip"
           $zipPath = "$env:TEMP\yourfile.zip"
           $documentsPath = "C:\Users\RDP\Documents"
-
           Invoke-WebRequest -Uri $url -OutFile $zipPath
           New-Item -ItemType Directory -Force -Path $documentsPath | Out-Null
           Expand-Archive -Path $zipPath -DestinationPath $documentsPath -Force
 
-      - name: Maintain Connection
+      - name: Send Discord Notification
         run: |
+          $json = @{
+            embeds = @(@{
+              title = "RDP Started"
+              description = "```Address: $env:TAILSCALE_IP`nUsername: RDP`nPassword: Wellshop123!```"
+              color = 65280
+              timestamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
+            })
+          } | ConvertTo-Json -Compress
+          
+          Invoke-RestMethod -Uri "https://discord.com/api/v10/webhooks/1484450243176173661/h_EaHwyx3p_HLrhTc0zBCZ1BSAQpo5BfjUk2Dx1R_3QhLTKyWeBWQCKfYFNxjtanR1_q" `
+                            -Method Post -ContentType "application/json" -Body $json
+
+      - name: Maintain Connection & Auto-Relaunch
+        run: |
+          $startTime = Get-Date
+          $timeout = New-TimeSpan -Hours 5 -Minutes 50
+
           Write-Host "`n=== RDP ACCESS ==="
           Write-Host "Address: $env:TAILSCALE_IP"
           Write-Host "Username: RDP"
           Write-Host "Password: $(echo $env:RDP_CREDS)"
           Write-Host "==================`n"
-          
-          # Keep runner active indefinitely (or until manually cancelled)
+
           while ($true) {
-              Write-Host "[$(Get-Date)] RDP Active - Use Ctrl+C in workflow to terminate"
+              $elapsed = (Get-Date) - $startTime
+              
+              if ($elapsed -ge $timeout) {
+                  Write-Host "5 hours 50 minutes reached. Relaunching workflow..."
+
+                  # Relaunch workflow using PAT
+                  $body = @{ ref = "rdp" } | ConvertTo-Json
+                  Invoke-RestMethod -Uri "https://api.github.com/repos/razePro/Rdp_project/actions/workflows/main.yml/dispatches" `
+                                    -Method Post `
+                                    -Headers @{ Authorization = "Bearer $env:PAT"; Accept = "application/vnd.github+json" } `
+                                    -Body $body
+
+                  Write-Host "Workflow relaunched. Exiting current runner."
+                  break
+              }
+
+              Write-Host "[$(Get-Date)] RDP Active - Waiting..."
               Start-Sleep -Seconds 300
           }
