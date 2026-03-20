@@ -3,6 +3,10 @@ name: Trigger RDP Workflow
 on:
   workflow_dispatch:
 
+permissions:
+  actions: write   # 👈 THIS FIXES YOUR ERROR
+  contents: read
+
 jobs:
   trigger:
     runs-on: ubuntu-latest
