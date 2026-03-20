@@ -71,6 +71,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $documentsPath | Out-Null
           Expand-Archive -Path $zipPath -DestinationPath $documentsPath -Force
 
+
       - name: Send Discord Notification
         run: |
           $embed = @{
@@ -88,6 +89,7 @@ jobs:
                             -Method Post `
                             -ContentType "application/json" `
                             -Body $body
+      
       - name: Maintain Connection & Auto-Relaunch
         run: |
           $startTime = Get-Date
