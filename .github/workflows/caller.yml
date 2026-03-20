@@ -1,0 +1,16 @@
+name: Trigger RDP Workflow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger RDP workflow
+        run: |
+          curl -X POST \
+          -H "Authorization: Bearer ${{ secrets.PAT }}" \
+          -H "Accept: application/vnd.github+json" \
+          https://api.github.com/repos/OWNER/REPO/actions/workflows/main.yml/dispatches \
+          -d '{"ref":"RDP"}'
