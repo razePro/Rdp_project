@@ -13,4 +13,4 @@ jobs:
           -H "Authorization: Bearer ${{ secrets.PAT }}" \
           -H "Accept: application/vnd.github+json" \
           https://api.github.com/repos/razePro/Rdp_project/actions/workflows/main.yml/dispatches \
-          -d '{"ref":"RDP"}'
+          -d '{"ref":"rdp"}'
