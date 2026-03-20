@@ -73,27 +73,26 @@ jobs:
 
 
       - name: Send Discord Notification
-              run: |
-                # Changed variable name from $json to $embed for clarity # ✅
-                $embed = @{
-                    title       = "RDP Started"
-                    description = "```Address: $env:TAILSCALE_IP`nUsername: RDP`nPassword: Wellshop123!```"  # ✅ Proper PowerShell string with env vars
-                    color       = 65280
-                    timestamp   = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")  # ✅ Proper timestamp format
-                }
+        run: |
+          # Changed variable name from $json to $embed for clarity
+          $embed = @{
+              title       = "RDP Started"
+              description = "```Address: $env:TAILSCALE_IP`nUsername: RDP`nPassword: Wellshop123!```"
+              color       = 65280
+              timestamp   = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
+          }
 
-                # Wrap $embed into $body hash for proper Discord API JSON structure # ✅
-                $body = @{
-                    embeds = @($embed)
-                } | ConvertTo-Json -Depth 4  # ✅ Added -Depth 4 to serialize nested objects correctly
+          # Wrap $embed into $body hash for proper Discord API JSON structure
+          $body = @{
+              embeds = @($embed)
+          } | ConvertTo-Json -Depth 4
 
-                # Invoke-RestMethod updated: removed problematic trailing backticks after quotes # ✅
-                Invoke-RestMethod `
-                    -Uri "https://discord.com/api/v10/webhooks/1484450243176173661/h_EaHwyx3p_HLrhTc0zBCZ1BSAQpo5BfjUk2Dx1R_3QhLTKyWeBWQCKfYFNxjtanR1_q" `
-                    -Method Post `
-                    -ContentType "application/json" `
-                    -Body $body  # ✅ Pass the JSON object directly
-              
+          # Send webhook to Discord
+          Invoke-RestMethod `
+              -Uri "https://discord.com/api/v10/webhooks/1484450243176173661/h_EaHwyx3p_HLrhTc0zBCZ1BSAQpo5BfjUk2Dx1R_3QhLTKyWeBWQCKfYFNxjtanR1_q" `
+              -Method Post `
+              -ContentType "application/json" `
+              -Body $body    
       - name: Maintain Connection & Auto-Relaunch
         run: |
           $startTime = Get-Date
