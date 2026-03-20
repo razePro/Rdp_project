@@ -72,27 +72,27 @@ jobs:
           Expand-Archive -Path $zipPath -DestinationPath $documentsPath -Force
 
 
-      - name: Send Discord Notification
-        run: |
+      #- name: Send Discord Notification
+        #run: |
           # Changed variable name from $json to $embed for clarity # ✅
-          $embed = @{
-              title       = "RDP Started"
-              description = "```Address: $env:TAILSCALE_IP`nUsername: RDP`nPassword: Wellshop123!```"  # ✅ Proper PowerShell string
-              color       = 65280
-              timestamp   = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
-          }
+          #$embed = @{
+              #title       = "RDP Started"
+              #description = "```Address: $env:TAILSCALE_IP`nUsername: RDP`nPassword: Wellshop123!```"  # ✅ Proper PowerShell string
+              #color       = 65280
+              #timestamp   = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
+          #}
 
           # Wrap $embed into $body hash for proper Discord API JSON structure
-          $body = @{
-              embeds = @($embed)
-          } | ConvertTo-Json -Depth 4
+          #$body = @{
+              #embeds = @($embed)
+          #} | ConvertTo-Json -Depth 4
 
           # Corrected Invoke-RestMethod (no backtick inside quotes)
-          Invoke-RestMethod `
-              -Uri "https://discord.com/api/v10/webhooks/1484450243176173661/h_EaHwyx3p_HLrhTc0zBCZ1BSAQpo5BfjUk2Dx1R_3QhLTKyWeBWQCKfYFNxjtanR1_q" `
-              -Method Post `
-              -ContentType "application/json" `
-              -Body $body
+          #Invoke-RestMethod `
+              #-Uri "https://discord.com/api/v10/webhooks/1484450243176173661/h_EaHwyx3p_HLrhTc0zBCZ1BSAQpo5BfjUk2Dx1R_3QhLTKyWeBWQCKfYFNxjtanR1_q" `
+              #-Method Post `
+              #-ContentType "application/json" `
+              #-Body $body
               
       - name: Maintain Connection & Auto-Relaunch
         run: |
